@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
  
 from data_utils import extract_curve_fingerprint
-from solver import run_inverse_calibration, TRAINING_BOUNDS
+from solver import run_inverse_calibration, TRAINING_BOUNDS, _parse_training_data
 from ai_engine import get_ai_interpretation
  
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -161,4 +161,39 @@ if uploaded_file is not None:
             }.get(k, "")
         } for k, v in fingerprint.items()])
         st.dataframe(feat_df, use_container_width=True, hide_index=True)
- 
+     # ── Step 5.5: Training Space Overlay ──────────────────────────────────────
+    st.write("### 🌌 Training Space Overlay")
+    with st.expander("Compare uploaded test against the 28 training datasets"):
+        overlay_fig = go.Figure()
+        
+        # 1. Plot the 28 background training curves
+        try:
+            training_datasets = _parse_training_data()
+            for i, d in enumerate(training_datasets):
+                overlay_fig.add_trace(go.Scatter(
+                    x=d['disp'], y=d['force'],
+                    mode="lines",
+                    line=dict(color="rgba(100, 110, 140, 0.3)", width=1), # Faint grey/blue
+                    name="Training Data" if i == 0 else "",
+                    showlegend=(i == 0),
+                    hoverinfo="skip"
+                ))
+        except Exception as e:
+            st.warning(f"Could not load training data for overlay: {e}")
+
+        # 2. Plot the uploaded curve on top in a bright color
+        overlay_fig.add_trace(go.Scatter(
+            x=disp, y=force,
+            mode="lines",
+            line=dict(color="#00FFCC", width=3), # Bright Cyan
+            name="Uploaded Test Data"
+        ))
+
+        overlay_fig.update_layout(
+            xaxis_title="Displacement (mm)",
+            yaxis_title="Force (N)",
+            template="plotly_dark",
+            height=400,
+            margin=dict(l=40, r=20, t=20, b=40)
+        )
+        st.plotly_chart(overlay_fig, use_container_width=True)
